@@ -5,12 +5,14 @@ import React from 'react'
 
 import {
   AutoControlledComponent as Component,
+  childrenUtils,
   createShorthandFactory,
   customPropTypes,
   getElementType,
   getUnhandledProps,
 } from '../../lib'
 import AccordionContent from './AccordionContent'
+import AccordionPanel from './AccordionPanel'
 import AccordionTitle from './AccordionTitle'
 
 /**
@@ -81,17 +83,12 @@ export default class AccordionAccordion extends Component {
     return _.includes(activeIndex, index) ? _.without(activeIndex, index) : [...activeIndex, index]
   }
 
-  handleTitleOverrides = predefinedProps => ({
-    onClick: (e, titleProps) => {
-      const { index } = titleProps
-      const activeIndex = this.computeNewIndex(index)
+  handleTitleClick = (e, titleProps) => {
+    const { index } = titleProps
 
-      this.trySetState({ activeIndex })
-
-      _.invoke(predefinedProps, 'onClick', e, titleProps)
-      _.invoke(this.props, 'onTitleClick', e, titleProps)
-    },
-  })
+    this.trySetState({ activeIndex: this.computeNewIndex(index) })
+    _.invoke(this.props, 'onTitleClick', e, titleProps)
+  }
 
   isIndexActive = (index) => {
     const { exclusive } = this.props
@@ -100,28 +97,8 @@ export default class AccordionAccordion extends Component {
     return exclusive ? activeIndex === index : _.includes(activeIndex, index)
   }
 
-  renderPanels = () => {
-    const children = []
-    const { panels } = this.props
-
-    _.each(panels, (panel, index) => {
-      const { content, title } = panel
-      const active = this.isIndexActive(index)
-
-      children.push(
-        AccordionTitle.create(title, {
-          defaultProps: { active, index },
-          overrideProps: this.handleTitleOverrides,
-        }),
-      )
-      children.push(AccordionContent.create(content, { defaultProps: { active } }))
-    })
-
-    return children
-  }
-
   render() {
-    const { className, children } = this.props
+    const { className, children, panels } = this.props
 
     const classes = cx('accordion', className)
     const rest = getUnhandledProps(AccordionAccordion, this.props)
@@ -129,7 +106,12 @@ export default class AccordionAccordion extends Component {
 
     return (
       <ElementType {...rest} className={classes}>
-        {_.isNil(children) ? this.renderPanels() : children}
+        {childrenUtils.isNil(children)
+          ? _.map(panels, (panel, index) => AccordionPanel.create(panel, {
+            defaultProps: { active: this.isIndexActive(index), index },
+            overrideProps: this.handleTitleOverrides,
+          }))
+          : children}
       </ElementType>
     )
   }
